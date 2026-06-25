@@ -302,7 +302,19 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;bac
     <div class="brow"><span class="brow-label">Interest (Discovery savings)</span><div class="brow-input"><span class="bprefix">R</span><input type="number" id="inc-interest" value="0" step="1"/></div></div>
     <div class="brow"><span class="brow-label">Debt received</span><div class="brow-input"><span class="bprefix">R</span><input type="number" id="inc-debt" value="500" step="1"/></div></div>
     <div class="brow"><span class="brow-label">Dad contribution</span><div class="brow-input"><span class="bprefix">R</span><input type="number" id="inc-dad" value="710" step="1"/></div></div>
+    <div class="bdivider"></div>
+    <div class="brow"><span class="brow-label" style="color:var(--t1);font-weight:500">Total</span><span class="brow-total" id="income-total">—</span></div>
   </div>
+
+  <div class="blabel">Debt repayments</div>
+  <div class="bcard">
+    <div class="brow"><span class="brow-label">Discovery credit card</span><div class="brow-input"><span class="bprefix">R</span><input type="number" class="bdebt" data-k="disccc" value="0" step="10"/></div></div>
+    <div class="brow"><span class="brow-label">Woolworths account</span><div class="brow-input"><span class="bprefix">R</span><input type="number" class="bdebt" data-k="woolies" value="0" step="10"/></div></div>
+    <div class="brow"><span class="brow-label">Foschini account</span><div class="brow-input"><span class="bprefix">R</span><input type="number" class="bdebt" data-k="foschini" value="0" step="10"/></div></div>
+    <div class="bdivider"></div>
+    <div class="brow"><span class="brow-label" style="color:var(--t1);font-weight:500">Total</span><span class="brow-total" id="debt-total">—</span></div>
+  </div>
+
   <div class="bg2">
     <div>
       <div class="blabel">Fixed expenses</div>
@@ -608,11 +620,13 @@ if(bs.debt!==undefined)document.getElementById('inc-debt').value=bs.debt;
 if(bs.dad!==undefined)document.getElementById('inc-dad').value=bs.dad;
 if(bs.savings!==undefined)document.getElementById('savings-slider').value=bs.savings;
 if(bs.expenses){Object.entries(bs.expenses).forEach(([k,v])=>{const el=document.querySelector(`.bexp[data-k="${k}"]`);if(el)el.value=v;});}
+if(bs.debts){Object.entries(bs.debts).forEach(([k,v])=>{const el=document.querySelector(`.bdebt[data-k="${k}"]`);if(el)el.value=v;});}
 const bfmt=n=>(n<0?'-R':'R')+Math.round(Math.abs(n)).toLocaleString('en-ZA');
 function getIncome(){return['inc-salary','inc-interest','inc-debt','inc-dad'].reduce((s,id)=>s+(parseFloat(document.getElementById(id).value)||0),0);}
 function getSavings(){return parseFloat(document.getElementById('savings-slider').value)||15000;}
 function getFixedTotal(){let t=0;['rent','wifi','elec','water'].forEach(k=>{const el=document.querySelector(`.bexp[data-k="${k}"]`);if(el)t+=parseFloat(el.value)||0;});return t;}
 function getSubsTotal(){let t=0;['spotify','netflix','icloud','amazon','dstv','twitter'].forEach(k=>{const el=document.querySelector(`.bexp[data-k="${k}"]`);if(el)t+=parseFloat(el.value)||0;});return t;}
+function getDebtTotal(){let t=0;['disccc','woolies','foschini'].forEach(k=>{const el=document.querySelector(`.bdebt[data-k="${k}"]`);if(el)t+=parseFloat(el.value)||0;});return t;}
 function getWeeks(pIdx){
   const p=PERIODS[pIdx],totalDays=Math.round((p.end-p.start)/86400000)+1,base=Math.floor(totalDays/4),extra=totalDays%4,weeks=[];
   let d=new Date(p.start);
@@ -665,16 +679,18 @@ function renderTracker(spendable){
   document.getElementById('sp-pct').textContent=pp.toFixed(0)+'% used';
 }
 function budgetUpdate(){
-  const income=getIncome(),savings=getSavings(),fixed=getFixedTotal(),subs=getSubsTotal(),expenses=fixed+subs,spendable=income-expenses-savings;
+  const income=getIncome(),savings=getSavings(),fixed=getFixedTotal(),subs=getSubsTotal(),debt=getDebtTotal(),expenses=fixed+subs,spendable=income-expenses-debt-savings;
   document.getElementById('fixed-total').textContent=bfmt(fixed);document.getElementById('subs-total').textContent=bfmt(subs);
-  document.getElementById('sum-income').textContent=bfmt(income);document.getElementById('sum-expenses').textContent=bfmt(expenses);
+  document.getElementById('income-total').textContent=bfmt(income);document.getElementById('debt-total').textContent=bfmt(debt);
+  document.getElementById('sum-income').textContent=bfmt(income);document.getElementById('sum-expenses').textContent=bfmt(expenses+debt);
   document.getElementById('sum-savings').textContent=bfmt(savings);document.getElementById('slider-val').textContent=bfmt(savings);
   const spEl=document.getElementById('sum-spendable');spEl.textContent=bfmt(spendable);spEl.className='bmc-value '+(spendable>=0?'bgreen':'bred');
   renderBTabs();renderWeeks(spendable);renderTracker(spendable);persistBSettings();
 }
 function persistBSettings(){
   const exps={};document.querySelectorAll('.bexp').forEach(el=>exps[el.dataset.k]=parseFloat(el.value)||0);
-  saveBSettings({salary:parseFloat(document.getElementById('inc-salary').value)||0,interest:parseFloat(document.getElementById('inc-interest').value)||0,debt:parseFloat(document.getElementById('inc-debt').value)||0,dad:parseFloat(document.getElementById('inc-dad').value)||0,savings:getSavings(),expenses:exps});
+  const debts={};document.querySelectorAll('.bdebt').forEach(el=>debts[el.dataset.k]=parseFloat(el.value)||0);
+  saveBSettings({salary:parseFloat(document.getElementById('inc-salary').value)||0,interest:parseFloat(document.getElementById('inc-interest').value)||0,debt:parseFloat(document.getElementById('inc-debt').value)||0,dad:parseFloat(document.getElementById('inc-dad').value)||0,savings:getSavings(),expenses:exps,debts:debts});
 }
 function selectPeriod(i){currentPeriod=i;budgetUpdate();}
 function addEntry(){
