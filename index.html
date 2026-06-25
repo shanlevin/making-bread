@@ -271,7 +271,7 @@ input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;bac
   <div style="padding:0 20px;margin-bottom:14px"><div class="co"><div class="cl" id="legEl"></div><div class="cw"><canvas id="donut" role="img" aria-label="Portfolio allocation"></canvas></div></div></div>
 </div>
 <div id="ptab-cash" class="ptab"><div class="sec"><div class="sec-head"><div class="sec-ttl">Pantry — Cash &amp; Savings</div><div class="sec-tot" id="t-cash"></div></div><div class="ncard" id="list-cash"></div></div></div>
-<div id="ptab-eq" class="ptab"><div class="sec"><div class="sec-head"><div class="sec-ttl">Easy Equities Portfolio</div><div class="sec-tot" id="t-eq"></div></div><div class="ncard" id="list-eq"></div></div></div>
+<div id="ptab-eq" class="ptab"><div class="sec"><div class="sec-head"><div class="sec-ttl">Easy Equities Portfolio</div><div class="sec-tot" id="t-eq" style="cursor:pointer;display:flex;align-items:center;gap:5px" onclick="openEqTotalEditor()"><span id="t-eq-val"></span><span style="font-size:11px;opacity:.6">✏️</span></div></div><div class="ncard" id="list-eq"></div></div></div>
 <div id="ptab-cry" class="ptab"><div class="sec"><div class="sec-head"><div class="sec-ttl">Crypto Kitchen</div><div class="sec-tot" id="t-cry"></div></div><div class="ncard" id="list-cry"></div></div></div>
 <div id="ptab-oth" class="ptab"><div class="sec"><div class="sec-head"><div class="sec-ttl">Honey Pot — Other Assets</div><div class="sec-tot" id="t-oth"></div></div><div class="ncard" id="list-oth"></div></div></div>
 <div id="ptab-goal" class="ptab">
@@ -427,6 +427,7 @@ const ASSETS=[
   {id:'tfsa',cat:'eq',grp:'TFSA',name:'TFSA',sub:'Easy Equities · JSE',emoji:'🇿🇦',base:()=>getNDV('tfsa',24197.78),editable:true},
   {id:'sp500e',cat:'eq',grp:'ETFs',name:'S&P 500 ETF',sub:'Easy Equities · USD',emoji:'🇺🇸',base:()=>getNDV('sp500e',11285.66),editable:true,tv:TV.sp500},
   {id:'nasdaqe',cat:'eq',grp:'ETFs',name:'Nasdaq 100 ETF',sub:'Easy Equities · USD',emoji:'📊',base:()=>getNDV('nasdaqe',1681.11),editable:true,tv:TV.nasdaq},
+  {id:'eqother',cat:'eq',grp:'',name:'Other',sub:'Anything else',emoji:'📦',base:()=>getNDV('eqother',0),editable:true},
   {id:'vs_zar',cat:'cry',grp:'VALR Savings 2026',name:'ZAR Cash',sub:'Savings challenge',emoji:'💰',base:()=>getNDV('vs_zar',4331),editable:true},
   {id:'vs_btc',cat:'cry',grp:'VALR Savings 2026',name:'Bitcoin',sub:()=>`${getQty('vs_btc')} BTC`,emoji:'₿',base:()=>getQty('vs_btc')*btcZar(),live:true,chgKey:'btc',unitFn:btcZar,tv:TV.btc,qtyKey:'vs_btc'},
   {id:'vs_hype',cat:'cry',grp:'VALR Savings 2026',name:'Hyperliquid',sub:()=>`${getQty('vs_hype')} HYPE`,emoji:'⚡',base:()=>getQty('vs_hype')*hypeZar(),live:true,chgKey:'hype',unitFn:hypeZar,tv:TV.hype,qtyKey:'vs_hype'},
@@ -442,6 +443,7 @@ const ASSETS=[
   {id:'deposit',cat:'oth',grp:'Deposits',name:'Rental Deposit',sub:'Held by landlord',emoji:'🏠',base:()=>getNDV('deposit',19050),editable:true},
   {id:'cousin',cat:'oth',grp:'Owed to me',name:'Cousin owes you',sub:'Wedding loan',emoji:'🤝',base:()=>getNDV('cousin',15000),editable:true},
   {id:'aunt',cat:'oth',grp:'Owed to me',name:'Aunt owes you',sub:'Personal loan',emoji:'🫙',base:()=>getNDV('aunt',2500),editable:true},
+  {id:'otherasset',cat:'oth',grp:'',name:'Other',sub:'Anything else',emoji:'📦',base:()=>getNDV('otherasset',0),editable:true},
 ];
 let NWD={val:{},qty:{}};
 function getNDV(id,def){return NWD.val[id]!==undefined?NWD.val[id]:def;}
@@ -574,7 +576,7 @@ function nwRender(){
   const cash=catSum('cash'),eq=catSum('eq'),cry=catSum('cry'),oth=catSum('oth'),total=nw();
   renderHero();
   document.getElementById('metsEl').innerHTML=`<div class="nmc"><div class="nmc-l">Cash &amp; equities</div><div class="nmc-v">${nfmt(cash+eq)}</div><div class="nmc-s">pantry</div></div><div class="nmc"><div class="nmc-l">Crypto</div><div class="nmc-v">${nfmt(cry)}</div><div class="nmc-s">volatile flour</div></div><div class="nmc"><div class="nmc-l">Net worth</div><div class="nmc-v">${nfmt(total)}</div><div class="nmc-s">whole loaf</div></div>`;
-  document.getElementById('t-cash').textContent=nfmt(cash);document.getElementById('t-eq').textContent=nfmt(eq);document.getElementById('t-cry').textContent=nfmt(cry);document.getElementById('t-oth').textContent=nfmt(oth);
+  document.getElementById('t-cash').textContent=nfmt(cash);document.getElementById('t-eq-val').textContent=nfmt(eq);document.getElementById('t-cry').textContent=nfmt(cry);document.getElementById('t-oth').textContent=nfmt(oth);
   renderMarkets();['cash','eq','cry','oth'].forEach(renderList);renderChart();simUpdate();
 }
 function ntab(name,el){
@@ -582,10 +584,30 @@ function ntab(name,el){
   document.querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));
   document.getElementById('ptab-'+name).classList.add('active');el.classList.add('active');
 }
-let adjId=null;
-function openAdj(id){adjId=id;const a=ASSETS.find(x=>x.id===id);document.getElementById('adjTitle').textContent='Update: '+a.name;document.getElementById('adjHint').textContent='Current value: '+nfmtD(cV(a));document.getElementById('inp-bal').value=cV(a).toFixed(2);document.getElementById('adjModal').classList.add('open');}
-function closeAdj(){document.getElementById('adjModal').classList.remove('open');adjId=null;}
-function saveAdj(){if(!adjId)return;NWD.val[adjId]=parseFloat(document.getElementById('inp-bal').value)||0;nwPersist();closeAdj();nwRender();}
+let adjId=null;let adjModeTotalOverride=false;
+function openEqTotalEditor(){
+  adjId='eqother';
+  document.getElementById('adjTitle').textContent='Update: Easy Equities Total';
+  const currentTotal=catSum('eq');
+  document.getElementById('adjHint').textContent=`Current portfolio total: ${nfmtD(currentTotal)}. Enter the real total — the difference will be added to "Other" so your line items stay intact.`;
+  document.getElementById('inp-bal').value=currentTotal.toFixed(2);
+  document.getElementById('adjModal').classList.add('open');
+  adjModeTotalOverride=true;
+}
+function openAdj(id){adjId=id;adjModeTotalOverride=false;const a=ASSETS.find(x=>x.id===id);document.getElementById('adjTitle').textContent='Update: '+a.name;document.getElementById('adjHint').textContent='Current value: '+nfmtD(cV(a));document.getElementById('inp-bal').value=cV(a).toFixed(2);document.getElementById('adjModal').classList.add('open');}
+function closeAdj(){document.getElementById('adjModal').classList.remove('open');adjId=null;adjModeTotalOverride=false;}
+function saveAdj(){
+  if(!adjId)return;
+  const entered=parseFloat(document.getElementById('inp-bal').value)||0;
+  if(adjModeTotalOverride){
+    const otherCurrent=getNDV('eqother',0);
+    const totalWithoutOther=catSum('eq')-otherCurrent;
+    NWD.val['eqother']=entered-totalWithoutOther;
+  } else {
+    NWD.val[adjId]=entered;
+  }
+  nwPersist();closeAdj();nwRender();
+}
 document.getElementById('adjModal').addEventListener('click',function(e){if(e.target===this)closeAdj();});
 document.getElementById('priceModal').addEventListener('click',function(e){if(e.target===this)closePriceEditor();});
 function nwPersist(){try{localStorage.setItem(SK,JSON.stringify(NWD));}catch(e){}}
